@@ -3,8 +3,11 @@ io.stdout:setvbuf('no')
 function love.load()
 	require "config"
 	require "genericFunctions"
+	require "genAttacks"
+	require "misc"
+
 	--hello!
-	love.window.setMode(1280, 720)
+	love.window.setMode(scrWidth, scrHeight)
 	print('test')
 	testVar='a'
 	print(type(1.0))
@@ -31,6 +34,9 @@ function love.load()
 		item.height = item.height or 100
 		item.radius = item.radius or 30
 		item.speed = item.speed or 300
+		item.move = false
+		item.angle = item.angle or 0
+		item.control = true
 		item.id = item.id or 0
 		item.hit = item.hit or false
 		item.hitTimer = item.hitTimer or 0
@@ -47,6 +53,7 @@ function love.load()
 		item.height = item.height or 100
 		item.radius = item.radius or 50
 		item.speed = item.speed or 300
+		item.angle = item.angle or 0
 		item.id = item.id or 0
 		item.renderType = item.renderType or 'circle'
 		-- despawns after some condition or specified time
@@ -64,24 +71,24 @@ function love.update(dt)
 	pressing.left = love.keyboard.isDown(config.left)
 	pressing.right = love.keyboard.isDown(config.right)
 
-	angleMod = 1
-	if (not pressing.down or not pressing.up) and (not pressing.left or not pressing.right) then
-		angleMod = math.sqrt(2)/2 --reduce speed at diagonal
-	end
-
 	for i, chr in pairs(chr_All) do --Move main character
-		if chr.id == 1 then
-			if pressing.up then
-				chr.y = chr.y - chr.speed*dt*angleMod
-			end
-			if pressing.down then
-				chr.y = chr.y + chr.speed*dt*angleMod
-			end
-			if pressing.left then
-				chr.x = chr.x - chr.speed*dt*angleMod
-			end
-			if pressing.right then
-				chr.x = chr.x + chr.speed*dt*angleMod
+		if chr.id == 1 and chr.control then
+			tempX,tempY = 0, 0
+			--hardcoded to pressing var, fix to generalize later
+			if pressing.up then tempY = tempY - 1 end
+			if pressing.down then tempY = tempY + 1 end
+			if pressing.left then tempX = tempX - 1 end
+			if pressing.right then tempX = tempX + 1 end
+			-- set angle of movement, in radians
+			chr.angle = math.atan2(tempY,tempX)
+			-- set movement flag based on controls
+			if tempX == 0 and tempY == 0 then chr.move = false else chr.move = true end
+			
+			-- To do: set wall detection, create future path for knockback
+			-- chr.move must be true for character to move, even when chr.control==false
+			if chr.move then
+				chr.x = chr.x + chr.speed*math.cos(chr.angle)*dt
+				chr.y = chr.y + chr.speed*math.sin(chr.angle)*dt
 			end
 		end
 	end
@@ -100,6 +107,10 @@ function love.update(dt)
 			end
 		end
 
+		atk.x = atk.x + atk.speed*math.cos(atk.angle)*dt
+		atk.y = atk.y + atk.speed*math.sin(atk.angle)*dt
+
+
 		if atk.timeOut ~= nil then
 			if atk.timeOut < 0 then 
 				atk.clear = true
@@ -107,6 +118,10 @@ function love.update(dt)
 				atk.timeOut = atk.timeOut - dt
 			end 
 		end
+		--To do: provide edge case for non-bullet like attacks
+		--clear bullets that move past the screen margin
+		if atk.x < (-atkMargin) or atk.x > scrWidth + atkMargin then atk.clear = true end
+		if atk.y < (-atkMargin) or atk.y > scrHeight+ atkMargin then atk.clear = true end
 
 		if atk.clear == true then
 			atk_All[i] = nil
@@ -135,6 +150,8 @@ function love.keypressed(key, scancode, isrepeat)
 	elseif key == 'backspace' then
 		chr_All = {}
 		atk_All = {}
+	elseif key=='y' then
+		atkBullet{num=6,spread=360/6,angle=0}
 	end
 end
 
@@ -156,7 +173,9 @@ function love.draw()
 		love.graphics.print('chr_id: ' .. chr.id, chr.x, chr.y)
 	end
 
+	atkCount = 0
 	for i, atk in pairs(atk_All) do
+		atkCount = atkCount + 1
 		if atk.renderType == 'circle' then
 			love.graphics.setColor(0, 0.4, 0.7)
 			love.graphics.circle('fill', atk.x, atk.y, atk.radius)
@@ -166,6 +185,7 @@ function love.draw()
 		love.graphics.setColor(1, 1, 1)		
 		love.graphics.print('atk_id: ' .. atk.id, atk.x, atk.y)
 	end
+	--print('atkCount: '.. atkCount)
 
 
 	for i, chr in pairs(chr_All) do
