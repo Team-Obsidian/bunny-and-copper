@@ -45,8 +45,8 @@ function love.load()
 		item.control = true
 		item.id = item.id or 0
 		item.hit = item.hit or false
-		item.hitTimer = item.hitTimer or 0
-		item.hitTimerMax = item.hitTimerMax or 3
+		item.invEnd = item.invEnd or 0
+		item.invDur = item.invDur or 3
 		table.insert(chr_All, item)
 	end
 
@@ -91,58 +91,7 @@ function love.load()
 	end
 
 
-	--[[
-	Conditions:
-	- Number of Bullets
-	- Spread
-	- Duration and End
-	--]]
-	function genAtk1Tele(item)
-		item.startTime = item.startTime or elapsedTime
-		item.endTime = item.endTime or elapsedTime + 3
-		item.x = item.x or scrCenterX
-		item.y = item.y or scrCenterY
-		item.width = item.width or 20 --arbitrary
-		item.angle = item.angle or 0
-		item.render = item.render or 'beam'
-		item.clear = item.clear or false
-		table.insert(gfx_All, item)
-	end
 
-	function genAtk1Tot(param)
-		print('genAtk1Tot is executed')
-		param.x = param.x or scrCenterX
-		param.y = param.y or scrCenterY
-		param.num = param.num or 6
-		param.atkStart = param.atkStart or 3
-		param.atkDur = param.atkDur or atkTimeOut
-		param.radius = param.radius or 10
-		param.spread = 360/param.num
-		param.angle = param.angle or 0
-		atkBullet{
-			x = param.x,
-			y = param.y,
-			num=param.num,
-			spread=param.spread,
-			radius = param.radius,
-			angle=param.angle,
-			startTime = elapsedTime + param.atkStart,
-			endTime = elapsedTime + param.atkStart + param.atkDur
-		}
-		param.teleStart = param.teleStart or 0
-		param.teleDur = param.teleDur or param.atkStart
-		--telegraph begins as soon as function is run
-		for i=0, param.num-1 do
-			genAtk1Tele{
-				x = param.x,
-				y = param.y,
-				startTime = elapsedTime + param.teleStart,
-				endTime = elapsedTime + param.teleStart + param.teleDur,
-				width = param.radius*2,
-				angle = math.rad(param.angle + param.spread*i) or param.angle or 0
-			}
-		end
-	end
 end
 
 
@@ -192,14 +141,16 @@ function love.update(dt)
 		if atk.startTime < elapsedTime then -- pass time behavior
 			-- Check if hitbox overlap, (note: comes before time & clear command)
 			for j, chr in pairs(chr_All) do
-
-				if atk.radius + chr.radius > distTo(atk, chr) and chr.hit == false then
-					--print('hit')
-					chr.hit = true
-					chr.hitTimer = chr.hitTimerMax
-				else
-					--print('not hit')
-					--chr.hit = false
+				if atk.renderType == 'circle' then
+					if atk.radius + chr.radius > distTo(atk, chr) and chr.hit == false then
+						chr.hit = true --should I make a hit function? later.
+						chr.invEnd = elapsedTime+chr.invDur
+					end
+				elseif atk.renderType == 'beam' then
+					if beamHitPlayer(atk, chr) then
+						chr.hit = true
+						chr.invEnd = elapsedTime+chr.invDur
+					end
 				end
 			end
 
@@ -220,7 +171,7 @@ function love.update(dt)
 		if atk.y < (-atkMargin) or atk.y > scrHeight+ atkMargin then atk.clear = true end
 
 		if atk.clear == true then
-			print('atk cleared')
+			--print('atk cleared')
 			atk_All[i] = nil
 		end
 	end
@@ -237,11 +188,8 @@ function love.update(dt)
 
 	--revise whole section with global time
 	for i, chr in pairs(chr_All) do
-		if chr.hitTimer < 0 then
+		if chr.invEnd < elapsedTime then
 			chr.hit = false
-			chr.hitTimer = 0
-		elseif chr.hit == true then
-			chr.hitTimer = chr.hitTimer - dt
 		end
 	end
 
@@ -259,7 +207,8 @@ function love.keypressed(key, scancode, isrepeat)
 		chr_All = {}
 		atk_All = {}
 	elseif key=='y' then
-		atkBullet{num=6,spread=360/6,angle=0}
+		genAtk2{}
+		genAtk2Tele{}
 	elseif key == 't' then
 		genEne{id=1,x=scrCenterX,y=scrCenterY}
 	elseif key == 'h' then
@@ -278,11 +227,50 @@ function love.draw()
 				--hardcoded max distance, limit later
 				newPos = posFromDist(graphic, scrWidth)
 				love.graphics.setLineWidth(graphic.width)
-				love.graphics.setColor(0.2, 0.3, 0.9, 0.5)
+				--set variations in color type
+				if graphic.id == 2 then love.graphics.setColor(0.3, 0.6, 0.7, 0.5)
+				else love.graphics.setColor(0.2, 0.3, 0.9, 0.5)
+				end
+
 				love.graphics.line(graphic.x, graphic.y, newPos.x, newPos.y)
 			end
 		end
+		love.graphics.setLineWidth(10)
 		love.graphics.setColor(1,1,1,1)
+	end
+
+
+
+	atkCount = 0
+	for i, atk in pairs(atk_All) do
+		atkCount = atkCount + 1
+		if atk.startTime < elapsedTime then
+			if atk.renderType == 'circle' then
+				love.graphics.setColor(0, 0.4, 0.7)
+				love.graphics.circle('fill', atk.x, atk.y, atk.radius)
+			elseif atk.renderType == 'beam' then
+				newPos = posFromDist(atk, scrWidth) --redundant with graphic, fix later.
+				love.graphics.setColor(0.2, 0.3, 0.9, 0.8)
+				love.graphics.setLineWidth(atk.radius*1)		
+				love.graphics.line(atk.x, atk.y, newPos.x, newPos.y)		
+			end
+
+			love.graphics.setLineWidth(10)
+			love.graphics.setColor(1, 1, 1, 1)		
+			love.graphics.print('atk_id: ' .. atk.id, atk.x, atk.y)
+		end
+	end
+	love.graphics.print('atkCount: '.. atkCount, 100, 100)
+
+	for i, ene in pairs(ene_All) do
+		if ene.id == 1 then
+			love.graphics.setColor(0.3, 0.2, 0.9, 0.3)
+			renderCir(ene, 'fill')
+			love.graphics.setColor(0.3, 0.2, 0.9, 0.8)
+			renderCir(ene, 'line')
+			love.graphics.setColor(1, 1, 1, 1)
+			love.graphics.draw(ene_spr1, ene.x, ene.y, 0, 1, 1, ene_spr1:getWidth()/2, ene_spr1:getHeight()/2)
+		end
 	end
 
 	for i, chr in pairs(chr_All) do
@@ -300,22 +288,6 @@ function love.draw()
 		love.graphics.print('chr_id: ' .. chr.id, chr.x, chr.y)
 	end
 
-	atkCount = 0
-	for i, atk in pairs(atk_All) do
-		atkCount = atkCount + 1
-		if atk.startTime < elapsedTime then
-			if atk.renderType == 'circle' then
-				love.graphics.setColor(0, 0.4, 0.7)
-				love.graphics.circle('fill', atk.x, atk.y, atk.radius)
-
-			end
-
-			love.graphics.setColor(1, 1, 1)		
-			love.graphics.print('atk_id: ' .. atk.id, atk.x, atk.y)
-		end
-	end
-	love.graphics.print('atkCount: '.. atkCount, 100, 100)
-
 	--debug values for player character
 	for i, chr in pairs(chr_All) do
 		if chr.id == 1 then
@@ -325,16 +297,5 @@ function love.draw()
 				temp = temp + 1
 			end
 		end 
-	end
-
-	for i, ene in pairs(ene_All) do
-		if ene.id == 1 then
-			love.graphics.setColor(0.3, 0.2, 0.9, 0.3)
-			renderCir(ene, 'fill')
-			love.graphics.setColor(0.3, 0.2, 0.9, 0.8)
-			renderCir(ene, 'line')
-			love.graphics.setColor(1, 1, 1, 1)
-			love.graphics.draw(ene_spr1, ene.x, ene.y, 0, 1, 1, ene_spr1:getWidth()/2, ene_spr1:getHeight()/2)
-		end
 	end
 end

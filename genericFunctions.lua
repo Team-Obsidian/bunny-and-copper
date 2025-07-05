@@ -14,7 +14,22 @@ function posFromDist(item, dist)
 		x = item.x + math.cos(item.angle)*dist,
 		y = item.y + math.sin(item.angle)*dist
 	}
-	print('newPosX is ' .. newPos.x)
-	print('newPosY is ' .. newPos.y)
+	--print('newPosX is ' .. newPos.x)
+	--print('newPosY is ' .. newPos.y)
 	return newPos
+end
+
+function angTo(item1,item2)
+	return math.atan2(item2.y-item1.y, item2.x - item1.x)
+end
+
+function beamHitPlayer(beam, chr) 
+	beamDist = math.abs(math.tan(angTo(beam, chr)) * distTo(beam,chr))
+	print('beamDist is '..beamDist)
+	if chr.radius + beam.radius > beamDist then
+		print('hit by beam')
+		return true
+	else
+		return false
+	end
 end
