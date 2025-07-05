@@ -8,3 +8,13 @@ function distTo(item1,item2)
 		return 1 -- no divide by zeros I hope
 	end
 end
+
+function posFromDist(item, dist)
+	newPos = {
+		x = item.x + math.cos(item.angle)*dist,
+		y = item.y + math.sin(item.angle)*dist
+	}
+	print('newPosX is ' .. newPos.x)
+	print('newPosY is ' .. newPos.y)
+	return newPos
+end

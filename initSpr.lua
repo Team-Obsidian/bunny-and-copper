@@ -1,0 +1,1 @@
+ene_spr1 = love.graphics.newImage('spr/spr1.png')
