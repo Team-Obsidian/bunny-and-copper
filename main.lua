@@ -156,6 +156,15 @@ function love.update(dt)
 
 			atk.x = atk.x + atk.speed*math.cos(atk.angle)*dt
 			atk.y = atk.y + atk.speed*math.sin(atk.angle)*dt
+			if atk.radiusExpand ~= nil then
+				atk.radiusOrbit = atk.radiusOrbit + atk.radiusExpand*dt
+			end
+			if atk.radiusSpeed ~= nil then
+				currentAngle = angTo(atk, atk.orbit)
+				newAngle = currentAngle + atk.radiusSpeed/atk.radiusOrbit*dt
+				atk.x = atk.orbit.x + atk.radiusOrbit*math.cos(newAngle)
+				atk.y = atk.orbit.y + atk.radiusOrbit*math.sin(newAngle)
+			end
 		end
 
 
@@ -198,7 +207,8 @@ end
 
 function love.keypressed(key, scancode, isrepeat)
 	if key == 'o' then
-		genAtk{x=love.math.random(0, 1200),y=love.math.random(0,720),duration=3}
+		genAtk3Tot{}
+		--genAtk{x=love.math.random(0, 1200),y=love.math.random(0,720),duration=3}
 	elseif key == 'p' then
 		genChr{id=1}
 	elseif key == 'u' then
@@ -233,9 +243,18 @@ function love.draw()
 				end
 
 				love.graphics.line(graphic.x, graphic.y, newPos.x, newPos.y)
+			elseif graphic.render == 'ring' then
+				if graphic.id == 3 then
+					love.graphics.setLineWidth(5)
+					love.graphics.setColor(0.7, 0.6, 0.9, 0.8)
+				end
+				--difficult to make rings  with empty on inside but filled outer ring
+				love.graphics.print('center is center', scrCenterX, scrCenterY)
+				love.graphics.circle('line', graphic.x, graphic.y, graphic.radiusOrbit - graphic.radius)
+				love.graphics.circle('line', graphic.x, graphic.y, graphic.radiusOrbit + graphic.radius)	
 			end
 		end
-		love.graphics.setLineWidth(10)
+		love.graphics.setLineWidth(5)
 		love.graphics.setColor(1,1,1,1)
 	end
 
@@ -247,14 +266,16 @@ function love.draw()
 		if atk.startTime < elapsedTime then
 			if atk.renderType == 'circle' then
 				love.graphics.setColor(0, 0.4, 0.7)
+				if atk.id == 3 then
+					love.graphics.setColor(0.7, 0.6, 0.9, 0.8)
+				end
 				love.graphics.circle('fill', atk.x, atk.y, atk.radius)
 			elseif atk.renderType == 'beam' then
 				newPos = posFromDist(atk, scrWidth) --redundant with graphic, fix later.
 				love.graphics.setColor(0.2, 0.3, 0.9, 0.8)
 				love.graphics.setLineWidth(atk.radius*1)		
-				love.graphics.line(atk.x, atk.y, newPos.x, newPos.y)		
+				love.graphics.line(atk.x, atk.y, newPos.x, newPos.y)	
 			end
-
 			love.graphics.setLineWidth(10)
 			love.graphics.setColor(1, 1, 1, 1)		
 			love.graphics.print('atk_id: ' .. atk.id, atk.x, atk.y)
