@@ -24,7 +24,8 @@ function angTo(item1,item2)
 end
 
 function beamHitPlayer(beam, chr) 
-	beamDist = math.abs(math.tan(angTo(beam, chr)) * distTo(beam,chr))
+	beamDist = math.abs(math.sin(angTo(beam, chr)) * distTo(beam,chr))
+	print('origin dist is '..distTo(beam, chr))
 	print('beamDist is '..beamDist)
 	if chr.radius + beam.radius > beamDist then
 		print('hit by beam')

@@ -208,6 +208,7 @@ end
 function love.keypressed(key, scancode, isrepeat)
 	if key == 'o' then
 		genAtk3Tot{}
+		genAtk3Tot{radiusSpeed=-150}
 		--genAtk{x=love.math.random(0, 1200),y=love.math.random(0,720),duration=3}
 	elseif key == 'p' then
 		genChr{id=1}
@@ -236,7 +237,7 @@ function love.draw()
 			if graphic.render == 'beam' then
 				--hardcoded max distance, limit later
 				newPos = posFromDist(graphic, scrWidth)
-				love.graphics.setLineWidth(graphic.width)
+				love.graphics.setLineWidth(graphic.width*2)
 				--set variations in color type
 				if graphic.id == 2 then love.graphics.setColor(0.3, 0.6, 0.7, 0.5)
 				else love.graphics.setColor(0.2, 0.3, 0.9, 0.5)
@@ -273,7 +274,7 @@ function love.draw()
 			elseif atk.renderType == 'beam' then
 				newPos = posFromDist(atk, scrWidth) --redundant with graphic, fix later.
 				love.graphics.setColor(0.2, 0.3, 0.9, 0.8)
-				love.graphics.setLineWidth(atk.radius*1)		
+				love.graphics.setLineWidth(atk.radius*2)		
 				love.graphics.line(atk.x, atk.y, newPos.x, newPos.y)	
 			end
 			love.graphics.setLineWidth(10)
