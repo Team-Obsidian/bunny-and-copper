@@ -16,6 +16,7 @@ function atkBullet(param)
 		item.speed = param.speed or 100
 		item.id = param.id or 0
 		item.renderType = 'circle'
+		item.owner = item.owner or 'enemy'
 		table.insert(atk_All, item)
 	end
 end
@@ -26,19 +27,20 @@ end
 	- Spread
 	- Duration and End
 	--]]
-	function genAtk1Tele(item)
-		item.startTime = item.startTime or elapsedTime
-		item.endTime = item.endTime or elapsedTime + 3
-		item.x = item.x or scrCenterX
-		item.y = item.y or scrCenterY
-		item.width = item.width or 20 --arbitrary
-		item.angle = item.angle or 0
-		item.render = item.render or 'beam'
-		item.clear = item.clear or false
-		table.insert(gfx_All, item)
-	end
+function genAtk1Tele(item)
+	item.startTime = item.startTime or elapsedTime
+	item.endTime = item.endTime or elapsedTime + 3
+	item.x = item.x or scrCenterX
+	item.y = item.y or scrCenterY
+	item.width = item.width or 20 --arbitrary
+	item.angle = item.angle or 0
+	item.render = item.render or 'beam'
+	item.clear = item.clear or false
+	table.insert(gfx_All, item)
+end
 
 function genAtk1Tot(param)
+	--8-shot bullets out
 	print('genAtk1Tot is executed')
 	param.x = param.x or scrCenterX
 	param.y = param.y or scrCenterY
@@ -74,9 +76,9 @@ function genAtk1Tot(param)
 end
 
 function genAtk2(item)
+	--laser beam
 	item.atkStart = item.atkStart or 3
 	item.atkDur = item.atkDur or 5
-
 	item.x = item.x or scrCenterX
 	item.y = item.y or scrCenterY
 	--mixing up atkStart and startTime, fix later.
@@ -87,6 +89,7 @@ function genAtk2(item)
 	--item.spreadSpeed = item.spreadSpeed or 0 --also needs appropriate telegraph
 	item.speed = item.speed or 0
 	item.id = item.id or 2
+	item.owner = item.owner or 'enemy'
 	item.renderType = 'beam'
 	table.insert(atk_All, item)		
 end
@@ -128,6 +131,7 @@ function genAtk3(param)
 			angle = 0, -- change...?
 			speed = 0,
 			id = 3,
+			owner = param.owner,
 			renderType = 'circle'
 		}
 		table.insert(atk_All, atk)
@@ -149,7 +153,7 @@ function genAtk3Tele(item)
 end
 
 function genAtk3Tot(param)
-	--print('genAtk1Tot is executed')
+	--bullet circle
 	param.x = param.x or scrCenterX
 	param.y = param.y or scrCenterY
 	param.num = param.num or 24
@@ -159,6 +163,7 @@ function genAtk3Tot(param)
 	param.radiusOrbit = param.radiusOrbit or 150
 	param.radiusSpeed = param.radiusSpeed or 300
 	param.radiusExpand = param.radiusExpand or 200
+	param.owner = param.owner or 'enemy'
 	genAtk3{
 		x = param.x,
 		y = param.y,
@@ -184,3 +189,60 @@ function genAtk3Tot(param)
 	}
 end
 
+
+--player attack 1 (out of 4)
+function genAtk1PTot(param)
+	--print('genAtk1PTot is executed')
+	param.x = param.x or scrCenterX
+	param.y = param.y or scrCenterY
+	param.atkStart = param.atkStart or 3
+	param.atkDur = param.atkDur or atkTimeOut
+	param.radius = param.radius or 100
+	param.angle = param.angle or 0
+	atkAOE{
+		startTime = elapsedTime + param.atkStart,
+		endTime = elapsedTime + param.atkStart + param.atkDur,
+		clear = true
+	}
+	param.teleStart = param.teleStart or 0 --set player animation windup
+	param.teleDur = param.teleDur or param.atkStart
+	--telegraph begins as soon as function is run
+	genAtk1PTele{
+		x = param.x,
+		y = param.y,
+		startTime = elapsedTime + param.teleStart,
+		endTime = elapsedTime + param.teleStart + param.teleDur,
+		radius = param.radius,
+		angle = param.angle or 0,
+		id=4
+	}
+end
+
+function atkAOE(item)
+	item.x = item.x or scrCenterX
+	item.y = item.y or scrCenterY
+	-- no default value for start and end time, must be specified
+	item.startTime = item.startTime
+	item.endTime = item.endTime
+	item.radius = item.radius or 100
+	item.angle = item.angle or 0 -- account for AOE on rails later
+	item.speed = item.speed or 0
+	item.id = item.id or 4
+	item.renderType = 'circle'
+	item.owner = item.owner or 'player' --or attribute to specific player...? 'playerA'?
+	item.clear = item.clear or false
+	table.insert(atk_All, item)
+end
+
+function genAtk1PTele(item)
+	item.startTime = item.startTime or elapsedTime
+	item.endTime = item.endTime or elapsedTime + 3
+	item.x = item.x or scrCenterX
+	item.y = item.y or scrCenterY
+	item.radius = item.radius or 20 --arbitrary
+	item.angle = item.angle or 0
+	item.render = item.render or 'circle'
+	item.clear = item.clear or false
+	item.id = 4
+	table.insert(gfx_All, item)
+end

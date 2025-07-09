@@ -23,18 +23,6 @@ function love.load()
 	--counts down events
 	eve_All = {} 
 
-	function renderRect(item)
-		if item~= nil then
-			love.graphics.rectangle('fill', item.x, item.y, 100, 100)
-		end
-	end
-
-	function renderCir(item, fill)
-		if item~= nil then
-			love.graphics.circle(fill, item.x, item.y, item.radius)
-		end
-	end
-
 	function genChr(item)
 		item.x = item.x or 0
 		item.y = item.y or 0
@@ -47,6 +35,7 @@ function love.load()
 		item.hit = item.hit or false
 		item.invEnd = item.invEnd or 0
 		item.invDur = item.invDur or 3
+		item.isPlayer = true
 		table.insert(chr_All, item)
 	end
 
@@ -78,6 +67,7 @@ function love.load()
 		item.id = item.id or 0
 		item.renderType = item.renderType or 'circle'
 		-- despawns after some condition or specified time
+		item.isPlayer = false
 		item.clear = item.clear or false
 		table.insert(ene_All, item)
 	end
@@ -140,18 +130,36 @@ function love.update(dt)
 		--if you get an error around here, you're probably missing a atk.startTime
 		if atk.startTime < elapsedTime then -- pass time behavior
 			-- Check if hitbox overlap, (note: comes before time & clear command)
-			for j, chr in pairs(chr_All) do
-				if atk.renderType == 'circle' then
-					if atk.radius + chr.radius > distTo(atk, chr) and chr.hit == false then
-						chr.hit = true --should I make a hit function? later.
-						chr.invEnd = elapsedTime+chr.invDur
-					end
-				elseif atk.renderType == 'beam' then
-					if beamHitPlayer(atk, chr) then
-						chr.hit = true
-						chr.invEnd = elapsedTime+chr.invDur
+			if atk.owner == 'enemy' then
+				for j, chr in pairs(chr_All) do
+					if atk.renderType == 'circle' then
+						if atk.radius + chr.radius > distTo(atk, chr) and chr.hit == false then
+							chr.hit = true --should I make a hit function? later.
+							chr.invEnd = elapsedTime+chr.invDur
+						end
+					elseif atk.renderType == 'beam' then
+						if beamHitPlayer(atk, chr) then
+							chr.hit = true
+							chr.invEnd = elapsedTime+chr.invDur
+						end
 					end
 				end
+			elseif atk.owner == 'player' then
+				for i, enemy in pairs(ene_All) do
+					if atk.renderType == 'circle' then
+						if atk.radius + ene.radius > distTo(atk, ene) then
+							--enemy hit specific behavior, associate with attack?
+						end
+					elseif atk.renderType == 'beam' then
+						if beamHitPlayer(atk, ene) then
+							--also enemy hit behavior
+						end
+					end
+				end
+				--fix later to pick specific ID
+
+			else
+				print('atk without owner found!')
 			end
 
 			atk.x = atk.x + atk.speed*math.cos(atk.angle)*dt
@@ -207,13 +215,24 @@ end
 
 function love.keypressed(key, scancode, isrepeat)
 	if key == 'o' then
+		--test bullet ring
 		genAtk3Tot{}
 		genAtk3Tot{radiusSpeed=-150}
-		--genAtk{x=love.math.random(0, 1200),y=love.math.random(0,720),duration=3}
 	elseif key == 'p' then
+		--make character
 		genChr{id=1}
 	elseif key == 'u' then
-		genAtk{x=600,y=350}
+		for i, chr in ipairs(chr_All) do
+			genAtk1PTot{
+				x = chr.x,
+				y = chr.y,
+				atkStart = 0.5,
+				atkDur = 1, --fix later, single frame only solution?
+				radius = 100,
+				teleStart = 0.5,
+				teleDur=1 --with fadeout?
+			}
+		end
 	elseif key == 'backspace' then
 		chr_All = {}
 		atk_All = {}
@@ -232,10 +251,11 @@ function love.keypressed(key, scancode, isrepeat)
 end
 
 function love.draw()
+	--draw telegraph graphics or attack trails after hitboxes, timers.
 	for i, graphic in pairs(gfx_All) do
 		if graphic.startTime < elapsedTime then
 			if graphic.render == 'beam' then
-				--hardcoded max distance, limit later
+				--use laserbeam sprite
 				newPos = posFromDist(graphic, scrWidth)
 				love.graphics.setLineWidth(graphic.width*2)
 				--set variations in color type
@@ -245,6 +265,7 @@ function love.draw()
 
 				love.graphics.line(graphic.x, graphic.y, newPos.x, newPos.y)
 			elseif graphic.render == 'ring' then
+				--use bullet ring safe zone "sprite"...?
 				if graphic.id == 3 then
 					love.graphics.setLineWidth(5)
 					love.graphics.setColor(0.7, 0.6, 0.9, 0.8)
@@ -253,8 +274,17 @@ function love.draw()
 				love.graphics.print('center is center', scrCenterX, scrCenterY)
 				love.graphics.circle('line', graphic.x, graphic.y, graphic.radiusOrbit - graphic.radius)
 				love.graphics.circle('line', graphic.x, graphic.y, graphic.radiusOrbit + graphic.radius)	
+			elseif graphic.render == 'circle' then
+				--use circle AOE sprite
+				if graphic.id == 4 then
+					love.graphics.setColor(0.7, 0.6, 0.9, 0.3)
+				end
+				love.graphics.circle('fill', graphic.x, graphic.y, graphic.radius)
+				love.graphics.setColor(1, 1, 1, 1)
+				love.graphics.circle('line', graphic.x, graphic.y, graphic.radius)	
 			end
 		end
+		--reset graphic attributes
 		love.graphics.setLineWidth(5)
 		love.graphics.setColor(1,1,1,1)
 	end
@@ -262,41 +292,50 @@ function love.draw()
 
 
 	atkCount = 0
+	--graphics for attack hitboxes
 	for i, atk in pairs(atk_All) do
 		atkCount = atkCount + 1
+		--check if hitbox and graphic should be active
 		if atk.startTime < elapsedTime then
+			--graphic for circle-type attack | Todo: create graphic object so animation after removal is possible
 			if atk.renderType == 'circle' then
+				--set various colors based on id
 				love.graphics.setColor(0, 0.4, 0.7)
 				if atk.id == 3 then
 					love.graphics.setColor(0.7, 0.6, 0.9, 0.8)
 				end
 				love.graphics.circle('fill', atk.x, atk.y, atk.radius)
+			--graphic for beam-type attack | create sprite and figure out borders
 			elseif atk.renderType == 'beam' then
 				newPos = posFromDist(atk, scrWidth) --redundant with graphic, fix later.
 				love.graphics.setColor(0.2, 0.3, 0.9, 0.8)
 				love.graphics.setLineWidth(atk.radius*2)		
 				love.graphics.line(atk.x, atk.y, newPos.x, newPos.y)	
 			end
-			love.graphics.setLineWidth(10)
+			love.graphics.setLineWidth(5)
 			love.graphics.setColor(1, 1, 1, 1)		
 			love.graphics.print('atk_id: ' .. atk.id, atk.x, atk.y)
 		end
 	end
+	--print the number of attack objects in all_atk
 	love.graphics.print('atkCount: '.. atkCount, 100, 100)
 
+	--draw enemy objects
 	for i, ene in pairs(ene_All) do
 		if ene.id == 1 then
 			love.graphics.setColor(0.3, 0.2, 0.9, 0.3)
-			renderCir(ene, 'fill')
+			love.graphics.circle('fill', ene.x, ene.y, ene.radius)
 			love.graphics.setColor(0.3, 0.2, 0.9, 0.8)
-			renderCir(ene, 'line')
+			love.graphics.circle('line', ene.x, ene.y, item.radius)
 			love.graphics.setColor(1, 1, 1, 1)
 			love.graphics.draw(ene_spr1, ene.x, ene.y, 0, 1, 1, ene_spr1:getWidth()/2, ene_spr1:getHeight()/2)
 		end
 	end
 
+	--draw player objects
 	for i, chr in pairs(chr_All) do
 		if chr.id == 1 then
+			--check for color based on hitbox, revise with sprites later
 			if chr.hit == true then
 				love.graphics.setColor(0.5, 0.1, 0.2)
 			elseif chr.hit == false then
@@ -305,7 +344,7 @@ function love.draw()
 		else
 			love.graphics.setColor(0.1, 0.7, 0.2)	
 		end
-		renderCir(chr,'fill')	
+		love.graphics.circle('fill', chr.x, chr.y, chr.radius)
 		love.graphics.setColor(1, 1, 1)		
 		love.graphics.print('chr_id: ' .. chr.id, chr.x, chr.y)
 	end
